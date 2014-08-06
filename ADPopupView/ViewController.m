@@ -19,7 +19,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
+    [ADPopupViewManager sharedManager].borderWidth = 1;
 }
 
 - (void)didReceiveMemoryWarning {
@@ -46,6 +46,15 @@
     return CGSizeMake([ViewController randFloatBetween:minWidth and:maxWidth], [ViewController randFloatBetween:minHeight and:maxHeight]);
 }
 
+- (UIView *)ADPopupViewContentViewForPopup:(ADPopupView *)popup{
+    NSInteger tt = popup.tag;
+    CGRect contentViewFrame = CGRectZero;
+    contentViewFrame.size = [self randomContentViewSize];
+    UIView *contentView = [[UIView alloc] initWithFrame:contentViewFrame];
+    contentView.backgroundColor = [UIColor redColor];
+    return contentView;
+}
+
 - (UIView *)contentView {
 
     CGRect contentViewFrame = CGRectZero;
@@ -54,7 +63,6 @@
     UIView *contentView = [[UIView alloc] initWithFrame:contentViewFrame];
 
     contentView.backgroundColor = [UIColor redColor];
-
     return contentView;
 }
 
@@ -62,19 +70,24 @@
 
     //[self.visiblePopup hide: YES];
 
-    if (arc4random_uniform(2)) {
-
-        self.visiblePopup = [[ADPopupView alloc] initAtPoint:point delegate:self withMessage:@"ADPopupView is very useful view to show some text or whatever UIView content"];
-        self.visiblePopup.popupColor = [UIColor darkGrayColor];
-
+//    if (arc4random_uniform(2)) {
+//
+//        self.visiblePopup = [[ADPopupView alloc] initAtPoint:point delegate:self withMessage:@"ADPopupView is very useful view to show some text or whatever UIView content"];
+//        self.visiblePopup.popupColor = [UIColor darkGrayColor];
+//
+//        [self.visiblePopup showInView:self.view animated:YES];
+//    }
+//    else {
+//
+//        self.visiblePopup = [[ADPopupView alloc] initAtPoint:point delegate:self withContentView:[self contentView]];
+    
+    
+            self.visiblePopup = [[ADPopupView alloc] initAtPoint:point delegate:self];
+        self.visiblePopup.popupColor = [UIColor blueColor] ;
+    self.visiblePopup.tag = 190;
+    
         [self.visiblePopup showInView:self.view animated:YES];
-    }
-    else {
-
-        self.visiblePopup = [[ADPopupView alloc] initAtPoint:point delegate:self withContentView:[self contentView]];
-
-        [self.visiblePopup showInView:self.view animated:YES];
-    }
+//    }
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {

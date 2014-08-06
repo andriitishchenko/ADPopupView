@@ -6,6 +6,7 @@
 //
 //
 
+#import <objc/runtime.h>
 #import "ADPopupView.h"
 
 typedef enum {
@@ -21,14 +22,52 @@ typedef enum {
 #define POPUP_MINIMUM_SIZE CGSizeMake(50, 46)
 #define POPUP_MAXIMUM_SIZE CGSizeMake(200, 100)
 
-#define POPUP_CONTENT_VIEW_MARGIN 5
+#define POPUP_CONTENT_VIEW_MARGIN 2
 
 #define POPUP_ARROW_EDGE_MARGIN 12
-#define POPUP_ARROW_SIZE CGSizeMake(13, 8)
+#define POPUP_ARROW_SIZE CGSizeMake(13, 18)
+
+
+
+
+
+@implementation ADPopupViewManager
+@synthesize messageLabelTextColor;
+@synthesize messageLabelFont;
+@synthesize popupColor=_popupColor;
+@synthesize borderWidth;
+@synthesize popupArrowEdgeMargin;
+@synthesize popupArrowSize;
+@synthesize popupCornerRadius;
+
++ (ADPopupViewManager *)sharedManager {
+    static ADPopupViewManager *sharedManager = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedManager = [[ADPopupViewManager alloc] init];
+    });
+    return sharedManager;
+}
+
+- (id)init {
+    self = [super init];
+    if (self) {
+        self.messageLabelFont = [UIFont fontWithName:@"HelveticaNeue-Bold" size:12.f];
+        self.messageLabelTextColor = [UIColor whiteColor];
+        self.popupColor = [UIColor blackColor];
+        self.borderWidth = POPUP_CONTENT_VIEW_MARGIN;
+        self.popupCornerRadius = POPUP_CORNER_RADIUS;
+        self.popupArrowSize = POPUP_ARROW_SIZE;
+        self.popupArrowEdgeMargin = POPUP_ARROW_EDGE_MARGIN;
+    }
+    return self;
+}
+@end
 
 @interface ADPopupView ()
 
 @property (nonatomic, strong) UILabel *messageLabel;
+@property (nonatomic, weak) UIView *contentView;
 @property (nonatomic, unsafe_unretained) EnumPopupType type;
 @property (nonatomic, unsafe_unretained) CGPoint presentationPoint;
 
@@ -42,12 +81,17 @@ typedef enum {
 @synthesize messageLabelFont;
 @synthesize message;
 @synthesize popupColor=_popupColor;
+@synthesize borderWidth=_borderWidth;
+@synthesize popupArrowEdgeMargin=_popupArrowEdgeMargin;
+@synthesize popupArrowSize=_popupArrowSize;
+@synthesize popupCornerRadius=_popupCornerRadius;
 
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
 
         self.frame = frame;
+        [self setup];
     }
     return self;
 }
@@ -57,16 +101,13 @@ typedef enum {
     if (self = [super initWithFrame:CGRectZero]) {
 
         self.delegate = theDelegate;
-        self.type = ptDownRight;
-
-        self.backgroundColor = [UIColor clearColor];
         self.presentationPoint = point;
-
+        self.contentView = contentView;
+        
+        [self setup];
+        
         self.frame = [self popupFrameForContentView:contentView];
-
         [self addContentView:contentView];
-
-        [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)]];
     }
 
     return self;
@@ -79,19 +120,76 @@ typedef enum {
         self.message = theMessage;
         self.presentationPoint = point;
         self.delegate = theDelegate;
-        self.type = ptDownRight;
-
-        self.backgroundColor = [UIColor clearColor];
-
-        self.messageLabelFont = [UIFont fontWithName:@"HelveticaNeue-Bold" size:12.f];
-        self.messageLabelTextColor = [UIColor whiteColor];
-
-        [self redrawPopupWithMessage];
-
-        [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)]];
+        [self setup];
     }
 
     return self;
+}
+
+- (id)initAtPoint:(CGPoint)point delegate:(id<ADPopupViewDelegate>)theDelegate{
+    if (self = [super initWithFrame:CGRectZero]) {
+        self.presentationPoint = point;
+        self.delegate = theDelegate;
+        [self setup];
+    }
+    
+    return self;
+}
+
+-(void)setup
+{
+        self.borderWidth = -1;
+        self.popupCornerRadius = -1;
+        self.popupArrowSize = CGSizeZero;
+        self.popupArrowEdgeMargin = -1;
+    
+        self.messageLabelFont = [ADPopupViewManager sharedManager].messageLabelFont;
+        self.messageLabelTextColor = [ADPopupViewManager sharedManager].messageLabelTextColor;
+        self.type = ptDownRight;
+        self.backgroundColor = [UIColor clearColor];
+        [self addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)]];
+}
+
+-(CGFloat)borderWidth{
+    return _borderWidth!=-1?_borderWidth:[ADPopupViewManager sharedManager].borderWidth;
+}
+-(CGFloat)popupArrowEdgeMargin{
+    return _popupArrowEdgeMargin!=-1?_popupArrowEdgeMargin:[ADPopupViewManager sharedManager].popupArrowEdgeMargin;
+}
+-(CGFloat)popupCornerRadius{
+    return _popupCornerRadius!=-1?_popupCornerRadius:[ADPopupViewManager sharedManager].popupCornerRadius;
+}
+-(CGSize)popupArrowSize{
+ return (CGSizeEqualToSize(_popupArrowSize,CGSizeZero)?[ADPopupViewManager sharedManager].popupArrowSize:_popupArrowSize);
+}
+
+
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    
+    if (self.message !=nil) {
+        [self redrawPopupWithMessage];
+        return;
+    }
+    else if (self.delegate && [self.delegate respondsToSelector:@selector(ADPopupViewMessageForPopup:)]) {
+        self.message = [self.delegate ADPopupViewMessageForPopup:self];
+    }
+    
+    
+    if (self.message != nil)
+    {
+        [self redrawPopupWithMessage];
+    }
+    else if (self.self.contentView==nil && self.delegate && [self.delegate respondsToSelector:@selector(ADPopupViewContentViewForPopup:)]) {
+            self.contentView = [self.delegate ADPopupViewContentViewForPopup:self];
+            if (self.contentView!=nil) {
+                self.frame = [self popupFrameForContentView:self.contentView];
+                [self addContentView:self.contentView];
+            }
+        }
+    
 }
 
 #pragma mark ContentView
@@ -99,23 +197,24 @@ typedef enum {
 - (void)addContentView:(UIView *)view {
 
     CGPoint contentViewCenter = CGPointMake(self.frame.size.width / 2, 0);
-
     switch (self.type) {
         case ptDownLeft:
         case ptDownRight:
-            contentViewCenter.y = (self.frame.size.height - POPUP_ARROW_SIZE.height) / 2;
+            contentViewCenter.y = (self.frame.size.height - self.popupArrowSize.height) / 2;
             break;
         case ptUpLeft:
         case ptUpRight:
-            contentViewCenter.y = (self.frame.size.height - POPUP_ARROW_SIZE.height) / 2 + POPUP_ARROW_SIZE.height;
+            contentViewCenter.y = (self.frame.size.height - self.popupArrowSize.height) / 2 + self.popupArrowSize.height;
             break;
         default:
             break;
     }
 
     view.center = contentViewCenter;
+    view.layer.cornerRadius = self.popupCornerRadius/2;
 
     [self addSubview:view];
+    self.opaque = YES;
 }
 
 #pragma mark Redraw
@@ -161,19 +260,18 @@ typedef enum {
 #pragma mark - PopupColor
 
 - (UIColor *)popupColor {
-    if (!_popupColor) return [UIColor blackColor];
+    if (!_popupColor) return [ADPopupViewManager sharedManager].popupColor;
     return _popupColor;
 }
 
 #pragma mark PopupFrame
 
 - (CGSize)popupSizeForContentView:(UIView *)contentView {
-
     float height = POPUP_MINIMUM_SIZE.height;
-    float newHeight = contentView.frame.size.height + POPUP_ARROW_SIZE.height + POPUP_CONTENT_VIEW_MARGIN * 2;
+    float newHeight = contentView.frame.size.height + self.popupArrowSize.height + self.borderWidth * 2;
 
     float width = POPUP_MINIMUM_SIZE.width;
-    float newWidth = contentView.frame.size.width + POPUP_CONTENT_VIEW_MARGIN * 2;
+    float newWidth = contentView.frame.size.width + self.borderWidth * 2;
 
     return CGSizeMake(MAX(width, newWidth), MAX(height, newHeight));
 }
@@ -183,10 +281,10 @@ typedef enum {
     CGRect newFrame = CGRectZero;
     newFrame.size = [self popupSizeForContentView:contentView];
 
-    float originX = self.presentationPoint.x + POPUP_ARROW_EDGE_MARGIN + POPUP_ARROW_SIZE.width - newFrame.size.width;
+    float originX = self.presentationPoint.x + self.popupArrowEdgeMargin + self.popupArrowSize.width - newFrame.size.width;
     if (originX < 0) {
 
-        originX = self.presentationPoint.x - POPUP_ARROW_EDGE_MARGIN * 2 + POPUP_ARROW_SIZE.width / 2;
+        originX = self.presentationPoint.x - self.popupArrowEdgeMargin * 2 + self.popupArrowSize.width / 2;
 
         self.type = ptDownLeft;
     }
@@ -239,6 +337,10 @@ typedef enum {
     }];
 }
 
+-(IBAction)hideAction:(id)sender{
+    [self hide:YES];
+}
+
 - (void)showInView:(UIView *)view animated:(BOOL)animated {
 
     self.alpha = 0.f;
@@ -261,6 +363,9 @@ typedef enum {
     }
 }
 
+
+
+
 #pragma mark Draw
 
 // Only override drawRect: if you perform custom drawing.
@@ -272,6 +377,7 @@ typedef enum {
         case ptDownLeft: {
 
             UIBezierPath *rect = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, self.frame.size.width, self.frame.size.height - POPUP_ARROW_SIZE.height) cornerRadius:POPUP_CORNER_RADIUS];
+
             [rect fill];
 
             UIBezierPath *arrow = [[UIBezierPath alloc] init];
@@ -287,7 +393,7 @@ typedef enum {
 
             UIBezierPath *rect = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, self.frame.size.width, self.frame.size.height - POPUP_ARROW_SIZE.height) cornerRadius:POPUP_CORNER_RADIUS];
             [rect fill];
-
+            
             UIBezierPath *arrow = [[UIBezierPath alloc] init];
             [arrow moveToPoint:CGPointMake(self.frame.size.width - POPUP_CORNER_RADIUS - POPUP_ARROW_EDGE_MARGIN - POPUP_ARROW_SIZE.width, self.frame.size.height - POPUP_ARROW_SIZE.height)];
             [arrow addLineToPoint:CGPointMake(self.frame.size.width - POPUP_CORNER_RADIUS - POPUP_ARROW_EDGE_MARGIN - POPUP_ARROW_SIZE.width / 2, self.frame.size.height)];
