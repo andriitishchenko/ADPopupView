@@ -389,8 +389,10 @@ typedef enum {
 #pragma mark Animation
 
 - (void)hide:(BOOL)animated {
+    if (!self.superview) {
+        return;
+    }
     [UIView animateWithDuration:(animated) ? ALPHA_ANIMATION_DURATION : 0.f animations:^{
-
         self.alpha = 0.f;
     }                completion:^(BOOL finished) {
 
