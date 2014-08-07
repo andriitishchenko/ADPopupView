@@ -29,7 +29,9 @@ typedef enum {
 
 
 
-
+@interface ADPopupViewManager()
+    @property (strong,nonatomic) NSMutableSet* popupContainer;
+@end
 
 @implementation ADPopupViewManager
 @synthesize messageLabelTextColor;
@@ -39,6 +41,7 @@ typedef enum {
 @synthesize popupArrowEdgeMargin;
 @synthesize popupArrowSize;
 @synthesize popupCornerRadius;
+@synthesize hideOnTap;
 
 + (ADPopupViewManager *)sharedManager {
     static ADPopupViewManager *sharedManager = nil;
@@ -52,6 +55,7 @@ typedef enum {
 - (id)init {
     self = [super init];
     if (self) {
+        self.popupContainer = [NSMutableSet set];
         self.messageLabelFont = [UIFont fontWithName:@"HelveticaNeue-Bold" size:12.f];
         self.messageLabelTextColor = [UIColor whiteColor];
         self.popupColor = [UIColor blackColor];
@@ -59,20 +63,37 @@ typedef enum {
         self.popupCornerRadius = POPUP_CORNER_RADIUS;
         self.popupArrowSize = POPUP_ARROW_SIZE;
         self.popupArrowEdgeMargin = POPUP_ARROW_EDGE_MARGIN;
+        self.hideOnTap = YES;
     }
     return self;
 }
+
+-(void)hideAll
+{
+    NSArray* list = [self.popupContainer allObjects];
+    for (ADPopupView*item in list) {
+        [item hide:YES];
+    }
+}
 @end
 
-@interface ADPopupView ()
 
+/**
+ *  ///////////////////////////////////////////////////////////////////////////////////
+ */
+@interface ADPopupView ()
+{
+    @private
+    NSInteger __hideOnTapIndex;
+    SEL bindControlTouched;
+}
 @property (nonatomic, strong) UILabel *messageLabel;
-@property (nonatomic, weak) UIView *contentView;
+@property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, assign) UIControl*bindedControl;
+@property (nonatomic, assign) UIView *presenterView;
 @property (nonatomic, unsafe_unretained) EnumPopupType type;
 @property (nonatomic, unsafe_unretained) CGPoint presentationPoint;
-
 @property (nonatomic, weak) id<ADPopupViewDelegate> delegate;
-
 @end
 
 @implementation ADPopupView
@@ -85,6 +106,7 @@ typedef enum {
 @synthesize popupArrowEdgeMargin=_popupArrowEdgeMargin;
 @synthesize popupArrowSize=_popupArrowSize;
 @synthesize popupCornerRadius=_popupCornerRadius;
+@synthesize hideOnTap=_hideOnTap;
 
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -104,9 +126,6 @@ typedef enum {
         self.presentationPoint = point;
         self.contentView = contentView;
         [self setup];
-        
-        self.frame = [self popupFrameForContentView:contentView];
-        [self addContentView:contentView];
     }
     return self;
 }
@@ -120,7 +139,6 @@ typedef enum {
         self.delegate = theDelegate;
         [self setup];
     }
-
     return self;
 }
 
@@ -130,16 +148,43 @@ typedef enum {
         self.delegate = theDelegate;
         [self setup];
     }
-    
     return self;
+}
+
+- (id)initWithDelegate:(id<ADPopupViewDelegate>)theDelegate withPresenterView:(UIView*)view bindControl:(UIControl*)control
+{
+    if (self = [super initWithFrame:CGRectZero]) {
+        self.presentationPoint = control.center;
+        self.delegate = theDelegate;
+        self.presenterView = view;
+        [self bindToControl:control];
+        [self setup];
+    }
+    return self;
+}
+
+- (void)bindToControl:(UIControl*)control{
+    if (control) {
+        self.bindedControl = control;
+        bindControlTouched =@selector(bindControlTouched:) ;
+        [self.bindedControl addTarget:self action:bindControlTouched forControlEvents:UIControlEventTouchUpInside];
+    }
+}
+
+-(IBAction)bindControlTouched:(id)sender
+{
+    [self showInView:self.presenterView animated:YES];
 }
 
 -(void)setup
 {
+        [[ADPopupViewManager sharedManager].popupContainer addObject:self];
+    
         self.borderWidth = -1;
         self.popupCornerRadius = -1;
         self.popupArrowSize = CGSizeZero;
         self.popupArrowEdgeMargin = -1;
+        __hideOnTapIndex = -1;
     
         self.messageLabelFont = [ADPopupViewManager sharedManager].messageLabelFont;
         self.messageLabelTextColor = [ADPopupViewManager sharedManager].messageLabelTextColor;
@@ -160,7 +205,20 @@ typedef enum {
 -(CGSize)popupArrowSize{
  return (CGSizeEqualToSize(_popupArrowSize,CGSizeZero) ? [ADPopupViewManager sharedManager].popupArrowSize: _popupArrowSize);
 }
+-(BOOL)hideOnTap
+{
+    if (__hideOnTapIndex == -1) {
+       return [ADPopupViewManager sharedManager].hideOnTap;
+    }
+    else
+        return _hideOnTap;
+}
 
+-(void)setHideOnTap:(BOOL)value
+{
+    _hideOnTap = value;
+    __hideOnTapIndex = 1;
+}
 
 
 - (void)layoutSubviews
@@ -179,16 +237,21 @@ typedef enum {
     if (self.message != nil)
     {
         [self redrawPopupWithMessage];
+        return;
     }
-    else if (self.self.contentView==nil && self.delegate && [self.delegate respondsToSelector:@selector(ADPopupViewContentViewForPopup:)]) {
+    else if (self.contentView==nil && self.delegate && [self.delegate respondsToSelector:@selector(ADPopupViewContentViewForPopup:)]) {
            UIView*vv = [self.delegate ADPopupViewContentViewForPopup:self];
             if (vv!=nil) {
                 self.contentView = vv;
-                self.frame = [self popupFrameForContentView:self.contentView];
-                [self addContentView:self.contentView];
+                
             }
         }
-    
+    if (self.contentView != nil)
+    {
+        self.frame = [self popupFrameForContentView:self.contentView];
+        [self addContentView:self.contentView];
+        return;
+    }
 }
 
 #pragma mark ContentView
@@ -326,7 +389,6 @@ typedef enum {
 #pragma mark Animation
 
 - (void)hide:(BOOL)animated {
-
     [UIView animateWithDuration:(animated) ? ALPHA_ANIMATION_DURATION : 0.f animations:^{
 
         self.alpha = 0.f;
@@ -334,6 +396,7 @@ typedef enum {
 
         [self removeFromSuperview];
     }];
+//    [[ADPopupViewManager sharedManager].popupContainer removeObject:self];
 }
 
 -(IBAction)hideAction:(id)sender{
@@ -359,6 +422,10 @@ typedef enum {
     if ([self.delegate respondsToSelector:@selector(ADPopupViewDidTap:)]) {
 
         [self.delegate ADPopupViewDidTap:self];
+    }
+    
+    if (self.hideOnTap) {
+        [self hide:YES];
     }
 }
 
@@ -435,5 +502,16 @@ typedef enum {
     }
 }
 
-
+- (void)dealloc
+{
+    if (self.bindedControl) {
+        [self.bindedControl removeTarget:self action:bindControlTouched forControlEvents:UIControlEventTouchUpInside];
+    }
+    
+        [[ADPopupViewManager sharedManager].popupContainer removeObject:self];
+    [self removeFromSuperview];
+    self.contentView = nil;
+    self.message = nil;
+    self.messageLabel = nil;
+}
 @end

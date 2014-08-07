@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
   s.homepage     = "https://github.com/Antondomashnev/ADPopupView"
   s.license      = { :type => "MIT", :file => "LICENSE" }
 
-  s.author             = { "Anton Domashnev" => "andrii.tishchenko+github@gmail.com" }
+  s.author             = { "Anton Domashnev" => "?" }
 
   s.platform     = :ios
   s.platform     = :ios, "6.0"

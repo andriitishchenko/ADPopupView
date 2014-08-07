@@ -15,6 +15,7 @@
 
 @interface ADPopupViewManager: NSObject<ADPopupViewInterface>
 + (ADPopupViewManager *)sharedManager;
+-(void)hideAll;
 @end
 
 @interface ADPopupView : UIView<ADPopupViewInterface>
@@ -22,10 +23,10 @@
 - (id)initAtPoint:(CGPoint)point delegate:(id<ADPopupViewDelegate>)theDelegate withMessage:(NSString *)theMessage;
 - (id)initAtPoint:(CGPoint)point delegate:(id<ADPopupViewDelegate>)theDelegate withContentView:(UIView *)contentView;
 - (id)initAtPoint:(CGPoint)point delegate:(id<ADPopupViewDelegate>)theDelegate;
-
+- (id)initWithDelegate:(id<ADPopupViewDelegate>)theDelegate withPresenterView:(UIView*)view bindControl:(UIControl*)control;
 - (void)hide:(BOOL)animated;
-
 - (void)showInView:(UIView *)view animated:(BOOL)animated;
+- (void)bindToControl:(UIControl*)control;
 /*
  self close action
  */
@@ -77,6 +78,10 @@
  */
 @property (nonatomic) CGFloat popupCornerRadius;
 
+/*
+ Hide on tap
+ */
+@property (nonatomic) BOOL hideOnTap;
 @end
 
 
