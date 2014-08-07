@@ -395,6 +395,10 @@ typedef enum {
     }                completion:^(BOOL finished) {
 
         [self removeFromSuperview];
+        if ([self.delegate respondsToSelector:@selector(ADPopupViewDidHide:)]) {
+            
+            [self.delegate ADPopupViewDidHide:self];
+        }
     }];
 //    [[ADPopupViewManager sharedManager].popupContainer removeObject:self];
 }

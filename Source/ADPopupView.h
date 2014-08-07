@@ -91,4 +91,5 @@
 - (void)ADPopupViewDidTap:(ADPopupView *)popup;
 - (UIView *)ADPopupViewContentViewForPopup:(ADPopupView *)popup;
 - (NSString *)ADPopupViewMessageForPopup:(ADPopupView *)popup;
+- (void)ADPopupViewDidHide:(ADPopupView *)popup;
 @end
