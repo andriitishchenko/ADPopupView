@@ -103,13 +103,11 @@ typedef enum {
         self.delegate = theDelegate;
         self.presentationPoint = point;
         self.contentView = contentView;
-        
         [self setup];
         
         self.frame = [self popupFrameForContentView:contentView];
         [self addContentView:contentView];
     }
-
     return self;
 }
 
@@ -160,7 +158,7 @@ typedef enum {
     return _popupCornerRadius!=-1?_popupCornerRadius:[ADPopupViewManager sharedManager].popupCornerRadius;
 }
 -(CGSize)popupArrowSize{
- return (CGSizeEqualToSize(_popupArrowSize,CGSizeZero)?[ADPopupViewManager sharedManager].popupArrowSize:_popupArrowSize);
+ return (CGSizeEqualToSize(_popupArrowSize,CGSizeZero) ? [ADPopupViewManager sharedManager].popupArrowSize: _popupArrowSize);
 }
 
 
@@ -183,8 +181,9 @@ typedef enum {
         [self redrawPopupWithMessage];
     }
     else if (self.self.contentView==nil && self.delegate && [self.delegate respondsToSelector:@selector(ADPopupViewContentViewForPopup:)]) {
-            self.contentView = [self.delegate ADPopupViewContentViewForPopup:self];
-            if (self.contentView!=nil) {
+           UIView*vv = [self.delegate ADPopupViewContentViewForPopup:self];
+            if (vv!=nil) {
+                self.contentView = vv;
                 self.frame = [self popupFrameForContentView:self.contentView];
                 [self addContentView:self.contentView];
             }

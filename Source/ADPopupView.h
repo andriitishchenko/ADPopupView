@@ -8,14 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-
-
-
-
-
-
-
-
 @class ADPopupView;
 @protocol ADPopupViewDelegate;
 @protocol ADPopupViewInterface;
@@ -70,10 +62,19 @@
  */
 @property (nonatomic) CGFloat borderWidth;
 
+/*
+ Arrow size
+ */
 @property (nonatomic) CGSize popupArrowSize;
 
+/*
+ Arrow margin
+ */
 @property (nonatomic) CGFloat popupArrowEdgeMargin;
 
+/*
+ Corner radius
+ */
 @property (nonatomic) CGFloat popupCornerRadius;
 
 @end
